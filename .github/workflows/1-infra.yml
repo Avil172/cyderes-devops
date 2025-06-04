@@ -22,5 +22,24 @@ jobs:
       - name: Terraform Init
         run: terraform -chdir=terraform init
 
+      - name: Terraform Validate
+        run: terraform -chdir=terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform -chdir=terraform plan -no-color -out=tfplan
+          echo "Plan completed successfully"
+
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: terraform/tfplan
+          retention-days: 5
+
       - name: Terraform Apply
-        run: terraform -chdir=terraform apply -auto-approve
+        run: |
+          terraform -chdir=terraform apply -auto-approve tfplan
+          echo "Apply completed successfully"
+        timeout-minutes: 30
