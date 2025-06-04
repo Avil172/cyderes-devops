@@ -1,24 +1,14 @@
-name: Build and Push Docker Image
+name: Build and Push to ECR
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
     paths:
-      - 'app/**'
       - 'Dockerfile'
-
-env:
-  AWS_REGION: us-west-2
-  ECR_REPOSITORY: cyderes-webserver
+      - 'app/**'
 
 jobs:
-  build:
+  docker:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
 
     steps:
       - name: Checkout
@@ -27,30 +17,17 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Get ECR Repository URI
-        id: ecr
+      - name: Build and Push Image to ECR
+        env:
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_URI }}
         run: |
-          echo "repository_uri=$(aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} --query 'repositories[0].repositoryUri' --output text)" >> $GITHUB_OUTPUT
-
-      - name: Build Docker image
-        run: docker build -t ${{ steps.ecr.outputs.repository_uri }}:latest .
-
-      - name: Push Docker image
-        run: docker push ${{ steps.ecr.outputs.repository_uri }}:latest
-
-      - name: Save image tag
-        run: echo "IMAGE_TAG=${{ steps.ecr.outputs.repository_uri }}:latest" >> $GITHUB_ENV
-
-      - name: Upload image info
-        uses: actions/upload-artifact@v3
-        with:
-          name: image-info
-          path: |
-            ${{ env.IMAGE_TAG }}
+          docker build -t $ECR_REPOSITORY:latest .
+          docker push $ECR_REPOSITORY:latest

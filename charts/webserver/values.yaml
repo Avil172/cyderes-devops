@@ -1,29 +1,21 @@
 replicaCount: 2
 
 image:
-  repository: demo-ecr-repo/cyderes-webserver
-  pullPolicy: IfNotPresent
-  tag: "latest"
+  repository: <your-ecr-uri>  # Example: 123456789.dkr.ecr.us-west-2.amazonaws.com/cyderes-nginx
+  tag: latest
+  pullPolicy: Always
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 80
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
+  enabled: true
+  className: "nginx"
   hosts:
-    - host: chart-example.local
+    - host: web.local
       paths:
         - path: /
-          pathType: ImplementationSpecific
-  tls: []
+          pathType: Prefix
 
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+resources: {}

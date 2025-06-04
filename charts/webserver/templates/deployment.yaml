@@ -2,24 +2,19 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "webserver.fullname" . }}
-  labels:
-    {{- include "webserver.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "webserver.selectorLabels" . | nindent 6 }}
+      app: {{ include "webserver.name" . }}
   template:
     metadata:
       labels:
-        {{- include "webserver.selectorLabels" . | nindent 8 }}
+        app: {{ include "webserver.name" . }}
     spec:
       containers:
-        - name: {{ .Chart.Name }}
+        - name: nginx
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: 80
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            - containerPort: 80

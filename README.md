@@ -1,37 +1,40 @@
-# Cyderes DevOps Challenge - EKS Deployment
+# Cyderes DevOps Challenge
 
-This solution deploys a Kubernetes cluster on AWS EKS with:
-- Terraform for infrastructure provisioning
-- Helm for application deployment
-- GitHub Actions for CI/CD pipelines
+## Overview
 
-## Architecture
+This project provisions a Kubernetes cluster, builds and deploys a custom Nginx-based Docker image using GitHub Actions CI/CD, packages it into a Helm chart, and manages infrastructure using Terraform.
 
-![Architecture Diagram](screenshots/architecture.png)
+## Features
 
-## Prerequisites
+- Custom Nginx web server
+- Helm chart for deployment
+- GitHub Actions CI/CD workflows
+- Infrastructure managed by Terraform
+- Kubernetes ingress exposure
+- Outputs: Cluster resources, screenshots, and proof of deployment
 
-1. AWS account with IAM permissions
-2. GitHub repository secrets configured:
-   - `AWS_IAM_ROLE`: ARN of IAM role for GitHub Actions
-3. S3 bucket and DynamoDB table for Terraform state
+---
 
-## Deployment Workflows
+## Folder Structure
 
-1. **Infrastructure Provisioning**:
-   - Creates EKS cluster, VPC, and ECR repository
-   - Triggered manually via GitHub Actions
+- `app/` – Static web content (served by Nginx)
+- `charts/` – Helm chart for Kubernetes deployment
+- `terraform/` – Terraform code for infrastructure provisioning
+- `.github/workflows/` – GitHub Actions CI/CD pipelines
+- `Dockerfile` – Docker build for custom Nginx webserver
 
-2. **Docker Image Build**:
-   - Builds and pushes NGINX image to ECR
-   - Triggered on changes to `app/` or `Dockerfile`
+## Instructions
 
-3. **Helm Deployment**:
-   - Deploys webserver to EKS cluster
-   - Triggered on changes to `charts/`
+### 1. Provision Infra
+- Adjust variables in `terraform/variables.tf`
+- Run GitHub Action: `.github/workflows/1-infra.yml`
 
-## Accessing the Application
+### 2. Build Image
+- GitHub Action builds Docker image using `Dockerfile` and pushes to Docker Hub or GitHub Container Registry.
 
-After deployment, get the LoadBalancer URL:
+### 3. Deploy to Kubernetes
+- Helm chart deploys app using `.github/workflows/3-deploy.yml`
+
+### 4. Output Resources
 ```bash
-kubectl get svc -n webserver
+kubectl get all -A -o yaml > kubernetes_cluster_resources.yaml

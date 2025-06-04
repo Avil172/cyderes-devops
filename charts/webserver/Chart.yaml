@@ -1,6 +1,5 @@
 apiVersion: v2
 name: webserver
-description: A Helm chart for Kubernetes
-type: application
+description: A Helm chart for deploying a custom Nginx webserver
 version: 0.1.0
-appVersion: "1.0.0"
+appVersion: "1.0"

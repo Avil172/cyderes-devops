@@ -1,52 +1,21 @@
-name: Provision EKS Infrastructure
+name: Infra Provision
 
 on:
-  workflow_dispatch:
-
-env:
-  AWS_REGION: us-west-2
+  push:
+    paths:
+      - 'terraform/**'
 
 jobs:
-  deploy:
+  terraform:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      # Initial authentication using access keys
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+      - uses: actions/checkout@v3
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform -chdir=terraform init
 
       - name: Terraform Apply
-        run: |
-          terraform -chdir=terraform apply -auto-approve \
-            -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" \
-            -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-            -var="github_org=${{ github.repository_owner }}" \
-            -var="github_repo=${{ github.event.repository.name }}"
-
-      # After first apply, subsequent runs can use the created IAM role
-      - name: Get Role ARN
-        id: get-role
-        run: |
-          echo "role_arn=$(terraform -chdir=terraform output -raw github_actions_role_arn)" >> $GITHUB_OUTPUT
-
-      - name: Configure AWS OIDC
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: ${{ steps.get-role.outputs.role_arn }}
-          aws-region: ${{ env.AWS_REGION }}
+        run: terraform -chdir=terraform apply -auto-approve
