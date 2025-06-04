@@ -16,8 +16,8 @@ provider "kubernetes" {
   token                  = data.aws_eks_cluster_auth.cluster.token
 }
 
-resource "aws_ecr_repository" "cyderes_webserver" {
-  name                 = "cyderes-webserver"
+resource "aws_ecr_repository" "cyderes_nginx" {
+  name = "devops/cyderes-nginx"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -25,16 +25,6 @@ resource "aws_ecr_repository" "cyderes_webserver" {
   }
 }
 
-resource "kubernetes_namespace" "cyderes" {
-  metadata {
-    name = "cyderes"
-  }
-}
-
 output "ecr_repository_url" {
-  value = aws_ecr_repository.cyderes_webserver.repository_url
-}
-
-output "eks_cluster_endpoint" {
-  value = data.aws_eks_cluster.cluster.endpoint
+  value = aws_ecr_repository.cyderes_nginx.repository_url
 }

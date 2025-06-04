@@ -1,36 +1,31 @@
-name: Deploy to Kubernetes
-
+name: Deploy to EKS
 on:
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
-
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v1
-
-    - name: Configure kubectl
-      run: |
-        aws eks --region us-west-2 update-kubeconfig --name funny-synth-duck
-
-    - name: Install Helm
-      uses: azure/setup-helm@v1
-
-    - name: Deploy Helm Chart
-      run: |
-        helm upgrade --install webserver ./charts/webserver \
-          --namespace cyderes \
-          --set image.repository=748852117020.dkr.ecr.us-west-2.amazonaws.com/cyderes-webserver
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+      
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v1
+      
+      - name: Configure kubectl
+        run: |
+          aws eks --region us-west-2 update-kubeconfig --name funny-synth-duck
+      
+      - name: Install Helm
+        uses: azure/setup-helm@v1
+      
+      - name: Deploy Helm Chart
+        run: |
+          helm upgrade --install webserver ./charts/webserver

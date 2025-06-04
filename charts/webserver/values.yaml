@@ -1,21 +1,24 @@
 replicaCount: 2
-
 image:
-  repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/cyderes-webserver
+  repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
   pullPolicy: IfNotPresent
   tag: "latest"
-
 service:
   type: LoadBalancer
   port: 80
-
 ingress:
   enabled: true
   className: "nginx"
-  annotations:
-    kubernetes.io/ingress.class: nginx
   hosts:
-    - host: cyderes-challenge.example.com
+    - host: cyderes-challenge.local
       paths:
         - path: /
           pathType: Prefix
+  tls: []
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
