@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "webserver.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webserver.labels" . | nindent 4 }}
 spec:

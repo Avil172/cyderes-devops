@@ -1,31 +1,45 @@
 name: Deploy to EKS
+
 on:
   workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+  CLUSTER_NAME: funny-synth-duck
+  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
+  EKS_ROLE_ARN: arn:aws:iam::748852117020:role/<your-eks-admin-role>
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      
+        uses: actions/checkout@v3
+
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-      
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.EKS_ROLE_ARN }}
+          role-session-name: GitHubActionsDeploy
+
       - name: Install kubectl
-        uses: azure/setup-kubectl@v1
-      
-      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
         run: |
-          aws eks --region us-west-2 update-kubeconfig --name funny-synth-duck
-      
+          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig \
+            --name ${{ env.CLUSTER_NAME }} \
+            --role-arn ${{ env.EKS_ROLE_ARN }}
+
       - name: Install Helm
-        uses: azure/setup-helm@v1
-      
-      - name: Deploy Helm Chart
+        uses: azure/setup-helm@v3
+
+      - name: Create namespace if not exists
         run: |
-          helm upgrade --install webserver ./charts/webserver
+          kubectl create namespace cyderes --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Helm Chart
+        run

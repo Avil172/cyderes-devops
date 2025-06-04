@@ -28,3 +28,35 @@ resource "aws_ecr_repository" "cyderes_nginx" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.cyderes_nginx.repository_url
 }
+
+resource "kubernetes_role" "deployer" {
+  metadata {
+    name      = "deployer-role"
+    namespace = "cyderes"
+  }
+
+  rule {
+    api_groups = ["", "apps"]
+    resources  = ["*"]
+    verbs      = ["*"]
+  }
+}
+
+resource "kubernetes_role_binding" "deployer_binding" {
+  metadata {
+    name      = "deployer-binding"
+    namespace = "cyderes"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = kubernetes_role.deployer.metadata[0].name
+  }
+
+  subject {
+    kind      = "User"
+    name      = "ECR-user"
+    api_group = "rbac.authorization.k8s.io"
+  }
+}
