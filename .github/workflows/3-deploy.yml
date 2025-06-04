@@ -6,7 +6,7 @@ on:
 env:
   AWS_REGION: us-west-2
   CLUSTER_NAME: funny-synth-duck
-  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
+  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
 
 jobs:
   deploy:
@@ -22,9 +22,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.CLUSTER_NAME }}
+
       - name: Tag subnets (required for LoadBalancer)
         run: |
-          SUBNETS=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.resourcesVpcConfig.subnetIds" --output text)
+          SUBNETS=$(aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --query "cluster.resourcesVpcConfig.subnetIds" --output text)
           aws ec2 create-tags --resources $SUBNETS \
             --tags Key=kubernetes.io/role/elb,Value=1 Key=kubernetes.io/role/internal-elb,Value=1
 
@@ -35,7 +44,7 @@ jobs:
             --create-namespace \
             --set service.type=LoadBalancer \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internet-facing \
-            --set image.repository=$ECR_REPO \
+            --set image.repository=${{ env.ECR_REPO }} \
             --set image.tag=latest \
             --atomic \
             --timeout 5m
