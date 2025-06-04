@@ -11,8 +11,3 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: {{ include "webserver.fullname" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
-
-{{- define "get-subnets" -}}
-{{- $subnets := exec "aws" (list "eks" "describe-cluster" "--name" "funny-synth-duck" "--query" "cluster.resourcesVpcConfig.subnetIds" "--output" "text") | trim -}}
-{{- $subnets | replace "\t" "," -}}
-{{- end -}}

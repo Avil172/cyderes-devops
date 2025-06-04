@@ -39,11 +39,15 @@ jobs:
 
       - name: Deploy Helm chart
         run: |
+          # Get subnets and format for annotation
+          SUBNETS=$(aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --query "cluster.resourcesVpcConfig.subnetIds" --output text | tr '\t' ',')
+          
           helm upgrade --install webserver ./charts/webserver \
             --namespace cyderes \
             --create-namespace \
             --set service.type=LoadBalancer \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internet-facing \
+            --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-subnets"=$SUBNETS \
             --set image.repository=${{ env.ECR_REPO }} \
             --set image.tag=latest \
             --atomic \
