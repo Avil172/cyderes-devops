@@ -33,7 +33,6 @@ jobs:
           helm upgrade --install webserver ./charts/webserver \
             --namespace cyderes \
             --create-namespace \
-            --atomic \
-            --timeout 5m \
+            --set service.type=LoadBalancer \
             --set image.repository=${{ env.ECR_REPO }} \
             --set image.tag=latest

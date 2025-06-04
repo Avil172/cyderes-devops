@@ -1,24 +1,13 @@
 replicaCount: 2
+
 image:
   repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
   pullPolicy: IfNotPresent
   tag: "latest"
+
 service:
-  type: LoadBalancer
+  type: LoadBalancer  # Changed from ClusterIP to expose externally
   port: 80
-ingress:
-  enabled: true
-  className: "nginx"
-  hosts:
-    - host: cyderes-challenge.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+  targetPort: 80
+
+# REMOVED: Entire 'ingress' section

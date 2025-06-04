@@ -2,11 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "webserver.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  namespace: cyderes
   labels:
     {{- include "webserver.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.service.type }}  # Now uses LoadBalancer
   ports:
     - port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
