@@ -20,7 +20,7 @@ availability_zones   = ["us-west-2a", "us-west-2b", "us-west-2c"]
 # Project settings
 environment   = "dev"
 project_name  = "cyderes"
-ami           = "ami-0fffba6cd0f439156"
+ami           = "ami-089b59e2c3e89dcce"
 
 # Tags
 common_tags = {
