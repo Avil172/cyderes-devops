@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
     bucket = "cyderes-tf-state"
-    key    = "devops/webserver.tfstate"
+    key    = "terraform/state"
     region = "us-west-2"
   }
 }

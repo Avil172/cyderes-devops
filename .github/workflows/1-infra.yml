@@ -4,42 +4,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  terraform:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
 
-      - name: Terraform Init
-        run: terraform -chdir=terraform init
+    - name: Terraform Init
+      run: terraform init
 
-      - name: Terraform Validate
-        run: terraform -chdir=terraform validate
+    - name: Terraform Plan
+      run: terraform plan
 
-      - name: Terraform Plan
-        id: plan
-        run: |
-          terraform -chdir=terraform plan -no-color -out=tfplan
-          echo "Plan completed successfully"
-
-      - name: Save Terraform Plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-plan
-          path: terraform/tfplan
-          retention-days: 5
-
-      - name: Terraform Apply
-        run: |
-          terraform -chdir=terraform apply -auto-approve tfplan
-          echo "Apply completed successfully"
-        timeout-minutes: 30
+    - name: Terraform Apply
+      run: terraform apply -auto-approve

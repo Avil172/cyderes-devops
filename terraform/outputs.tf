@@ -1,7 +1,7 @@
-output "instance_id" {
-  value = aws_instance.web.id
+output "eks_cluster_name" {
+  value = "funny-synth-duck"
 }
 
-output "public_ip" {
-  value = aws_instance.web.public_ip
+output "ecr_repository_name" {
+  value = aws_ecr_repository.cyderes_webserver.name
 }
