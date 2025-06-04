@@ -1,4 +1,4 @@
-name: Provision Infrastructure
+name: Provision EKS Infrastructure
 
 on:
   workflow_dispatch:
@@ -25,26 +25,24 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.7
 
       - name: Terraform Init
         run: terraform -chdir=terraform init
 
-      - name: Terraform Plan
-        run: terraform -chdir=terraform plan
-
       - name: Terraform Apply
-        run: terraform -chdir=terraform apply -auto-approve
+        run: |
+          terraform -chdir=terraform apply -auto-approve \
+            -var="github_org=${{ github.repository_owner }}" \
+            -var="github_repo=${{ github.event.repository.name }}"
 
       - name: Configure kubectl
         run: |
-          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name $(terraform -chdir=terraform output -raw cluster_name)
+          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig \
+            --name $(terraform -chdir=terraform output -raw cluster_name)
           kubectl config view --minify --flatten > kubeconfig.yaml
-        working-directory: ./terraform
 
       - name: Upload kubeconfig
         uses: actions/upload-artifact@v3
         with:
           name: kubeconfig
-          path: ./terraform/kubeconfig.yaml
+          path: kubeconfig.yaml
