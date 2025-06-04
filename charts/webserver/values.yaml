@@ -13,7 +13,7 @@ service:
   targetPort: 80
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-    service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-xxxxxxx,subnet-xxxxxx" # Replace with your actual subnet IDs
+    service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-06a484632a8634a3b,subnet-033ecfe85b7d4b118,subnet-0c8ecd18b7031caf9,subnet-082b19f50553eabaf" # Replace with your actual subnet IDs
 
 resources:
   requests:
