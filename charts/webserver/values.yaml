@@ -1,3 +1,5 @@
+# charts/webserver/values.yaml
+
 replicaCount: 2
 
 image:
@@ -6,7 +8,44 @@ image:
   tag: latest
 
 service:
-  type: ClusterIP  # Overridden by --set in workflow
+  type: LoadBalancer
   port: 80
   targetPort: 80
-  annotations: {}  # Will be set in workflow
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-subnets: "subnet-xxxxxxx,subnet-xxxxxx" # Replace with your actual subnet IDs
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+tolerations:
+- key: "CriticalAddonsOnly"
+  operator: "Exists"
+  effect: "NoSchedule"
+
+nodeSelector: {}
+
+affinity: {}
+
+# Optional: For ECR access
+imagePullSecrets: []
+# - name: ecr-credentials
