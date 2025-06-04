@@ -22,17 +22,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Configure kubeconfig
+      - name: Tag subnets (required for LoadBalancer)
         run: |
-          aws eks update-kubeconfig \
-            --region ${{ env.AWS_REGION }} \
-            --name ${{ env.CLUSTER_NAME }}
+          SUBNETS=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.resourcesVpcConfig.subnetIds" --output text)
+          aws ec2 create-tags --resources $SUBNETS \
+            --tags Key=kubernetes.io/role/elb,Value=1 Key=kubernetes.io/role/internal-elb,Value=1
 
-      - name: Deploy Helm Chart
+      - name: Deploy Helm chart
         run: |
           helm upgrade --install webserver ./charts/webserver \
             --namespace cyderes \
             --create-namespace \
             --set service.type=LoadBalancer \
-            --set image.repository=${{ env.ECR_REPO }} \
-            --set image.tag=latest
+            --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internet-facing \
+            --set image.repository=$ECR_REPO \
+            --set image.tag=latest \
+            --atomic \
+            --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          echo "LoadBalancer URL:"
+          kubectl get svc webserver -n cyderes -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+          echo -e "\nPods:"
+          kubectl get pods -n cyderes

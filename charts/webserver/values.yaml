@@ -3,11 +3,10 @@ replicaCount: 2
 image:
   repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: latest
 
 service:
-  type: LoadBalancer  # Changed from ClusterIP to expose externally
+  type: ClusterIP  # Overridden by --set in workflow
   port: 80
   targetPort: 80
-
-# REMOVED: Entire 'ingress' section
+  annotations: {}  # Will be set in workflow
