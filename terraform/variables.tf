@@ -93,5 +93,5 @@ variable "common_tags" {
 variable "ami" {
   description = "AMI ID for the EC2 instance"
   type        = string
-  default     = "ami-0abcdef1234567890" # <-- replace with your actual AMI ID
+  default     = "ami-0fffba6cd0f439156" # <-- replace with your actual AMI ID
 }
