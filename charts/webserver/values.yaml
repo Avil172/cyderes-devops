@@ -1,6 +1,6 @@
 replicaCount: 2
 image:
-  repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
+  repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
   pullPolicy: IfNotPresent
   tag: "latest"
 service:

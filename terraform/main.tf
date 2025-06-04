@@ -17,7 +17,7 @@ provider "kubernetes" {
 }
 
 resource "aws_ecr_repository" "cyderes_nginx" {
-  name = "devops/cyderes-nginx"
+  name = "devops/cyderes-nginx-2"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

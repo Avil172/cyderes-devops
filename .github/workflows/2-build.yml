@@ -23,7 +23,7 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: 748852117020.dkr.ecr.us-west-2.amazonaws.com
-          ECR_REPOSITORY: devops/cyderes-nginx
+          ECR_REPOSITORY: devops/cyderes-nginx-2
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
