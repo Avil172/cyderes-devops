@@ -6,7 +6,7 @@ on:
 env:
   AWS_REGION: us-west-2
   CLUSTER_NAME: funny-synth-duck
-  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
+  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
 
 jobs:
   deploy:
