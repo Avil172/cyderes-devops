@@ -1,0 +1,56 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'Dockerfile'
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: cyderes-webserver
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Get ECR Repository URI
+        id: ecr
+        run: |
+          echo "repository_uri=$(aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} --query 'repositories[0].repositoryUri' --output text)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: docker build -t ${{ steps.ecr.outputs.repository_uri }}:latest .
+
+      - name: Push Docker image
+        run: docker push ${{ steps.ecr.outputs.repository_uri }}:latest
+
+      - name: Save image tag
+        run: echo "IMAGE_TAG=${{ steps.ecr.outputs.repository_uri }}:latest" >> $GITHUB_ENV
+
+      - name: Upload image info
+        uses: actions/upload-artifact@v3
+        with:
+          name: image-info
+          path: |
+            ${{ env.IMAGE_TAG }}
