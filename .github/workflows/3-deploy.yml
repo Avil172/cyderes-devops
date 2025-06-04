@@ -7,7 +7,6 @@ env:
   AWS_REGION: us-west-2
   CLUSTER_NAME: funny-synth-duck
   ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
-  EKS_ROLE_ARN: arn:aws:iam::748852117020:role/<your-eks-admin-role>
 
 jobs:
   deploy:
@@ -22,24 +21,17 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.EKS_ROLE_ARN }}
-          role-session-name: GitHubActionsDeploy
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v3
 
       - name: Configure kubeconfig
         run: |
-          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig \
-            --name ${{ env.CLUSTER_NAME }} \
-            --role-arn ${{ env.EKS_ROLE_ARN }}
-
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-
-      - name: Create namespace if not exists
-        run: |
-          kubectl create namespace cyderes --dry-run=client -o yaml | kubectl apply -f -
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ env.CLUSTER_NAME }}
 
       - name: Deploy Helm Chart
-        run
+        run: |
+          helm upgrade --install webserver ./charts/webserver \
+            --namespace cyderes \
+            --create-namespace \
+            --set image.repository=${{ env.ECR_REPO }} \
+            --set image.tag=latest
