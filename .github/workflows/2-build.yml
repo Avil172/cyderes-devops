@@ -1,10 +1,7 @@
 name: Build and Push to ECR
 
 on:
-  push:
-    paths:
-      - 'Dockerfile'
-      - 'app/**'
+  workflow_dispatch:
 
 jobs:
   docker:
