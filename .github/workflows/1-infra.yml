@@ -17,10 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      # Initial authentication using access keys
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_IAM_ROLE }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
@@ -32,17 +34,19 @@ jobs:
       - name: Terraform Apply
         run: |
           terraform -chdir=terraform apply -auto-approve \
+            -var="aws_access_key=${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            -var="aws_secret_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
             -var="github_org=${{ github.repository_owner }}" \
             -var="github_repo=${{ github.event.repository.name }}"
 
-      - name: Configure kubectl
+      # After first apply, subsequent runs can use the created IAM role
+      - name: Get Role ARN
+        id: get-role
         run: |
-          aws eks --region ${{ env.AWS_REGION }} update-kubeconfig \
-            --name $(terraform -chdir=terraform output -raw cluster_name)
-          kubectl config view --minify --flatten > kubeconfig.yaml
+          echo "role_arn=$(terraform -chdir=terraform output -raw github_actions_role_arn)" >> $GITHUB_OUTPUT
 
-      - name: Upload kubeconfig
-        uses: actions/upload-artifact@v3
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          name: kubeconfig
-          path: kubeconfig.yaml
+          role-to-assume: ${{ steps.get-role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
