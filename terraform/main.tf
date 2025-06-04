@@ -4,29 +4,6 @@ provider "aws" {
   secret_key = var.aws_secret_key  # Will be passed via environment variables
 }
 
-# IAM Role for GitHub Actions
-resource "aws_iam_role" "github_actions" {
-  name = "GitHubActionsRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*"
-          }
-        }
-      }
-    ]
-  })
-}
-
 # IAM Policies for GitHub Actions
 resource "aws_iam_role_policy_attachment" "github_eks" {
   role       = aws_iam_role.github_actions.name
@@ -43,21 +20,22 @@ resource "aws_iam_role_policy_attachment" "github_vpc" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonVPCFullAccess"
 }
 
+# IAM Role for GitHub Actions
 resource "aws_iam_role" "github_actions" {
-  name = "GitHubActionsOIDCRole"
+  name = "GitHubActionsRole"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17",
+    Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow",
+        Effect = "Allow"
         Principal = {
           Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
-        },
-        Action = "sts:AssumeRoleWithWebIdentity",
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:your-org/your-repo:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*"
           }
         }
       }
