@@ -6,8 +6,11 @@ metadata:
   labels:
     {{- include "webserver.labels" . | nindent 4 }}
   annotations:
-    kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
@@ -15,12 +18,12 @@ spec:
         paths:
           {{- range .paths }}
           - path: {{ .path }}
-            pathType: {{ .pathType }}
+            pathType: {{ .pathType | default "ImplementationSpecific" }}
             backend:
               service:
                 name: {{ include "webserver.fullname" $ }}
                 port:
-                  number: {{ $root.Values.service.port }}
+                  number: {{ $.Values.service.port }}
           {{- end }}
     {{- end }}
   {{- if .Values.ingress.tls }}
@@ -30,7 +33,7 @@ spec:
         {{- range .hosts }}
         - {{ . | quote }}
         {{- end }}
-      secretName: {{ .secretName }}
+      secretName: {{ .secretName | quote }}
     {{- end }}
   {{- end }}
 {{- end }}
