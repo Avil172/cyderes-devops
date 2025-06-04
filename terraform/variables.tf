@@ -89,3 +89,9 @@ variable "common_tags" {
     ManagedBy   = "terraform"
   }
 }
+
+variable "ami" {
+  description = "AMI ID for the EC2 instance"
+  type        = string
+  default     = "ami-0abcdef1234567890" # <-- replace with your actual AMI ID
+}
