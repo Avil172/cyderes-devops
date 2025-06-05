@@ -6,6 +6,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -20,35 +21,39 @@ jobs:
 
       - name: Transfer Files
         run: |
-          # Create exact directory structure
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "mkdir -p ~/app-src"
-          
-          # Transfer entire repository (or specific files)
+          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "rm -rf ~/app-src && mkdir -p ~/app-src/charts"
           rsync -avz -e "ssh -i ~/.ssh/ec2_key.pem" \
-            ./ \
+            ./Dockerfile ./charts/nginx/ \
             ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/
 
       - name: Build and Deploy
         run: |
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Fix Docker permissions
-            sudo usermod -aG docker ec2-user
-            sudo systemctl restart docker
+          ssh -i ~/.ssh/ec2_key.pem -T ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOSSH'
+            # Clean up previous deployments
+            helm uninstall nginx || true
             
-            # Build using k3s's contained runtime (no Docker needed)
-            sudo k3s ctr images build \
-              --tag local-nginx:latest \
-              --no-progress \
-              ~/app-src
+            # Build using Docker
+            sudo docker build -t local-nginx:latest ~/app-src
             
-            # Import into k3s directly
-            sudo k3s ctr images import --digests ~/app-src/local-nginx.tar
+            # Save and load directly into k3s
+            sudo docker save local-nginx:latest > ~/nginx-image.tar
+            sudo k3s ctr images import ~/nginx-image.tar
+            sudo k3s ctr images tag docker.io/library/local-nginx:latest local-nginx:latest
             
-            # Deploy with explicit paths
+            # Deploy with correct image reference
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
             helm upgrade --install nginx ~/app-src/charts/nginx \
-              --set image.repository=local-nginx \
-              --set image.tag=latest \
-              --set image.pullPolicy=IfNotPresent \
-              --atomic
-          EOF
+              --set image.repository="local-nginx" \
+              --set image.tag="latest" \
+              --set image.pullPolicy="Never" \
+              --atomic \
+              --timeout 5m
+          EOSSH
+
+      - name: Verify Deployment
+        run: |
+          ssh -i ~/.ssh/ec2_key.pem -T ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOSSH'
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=nginx --timeout=120s
+            kubectl get pods -o wide
+          EOSSH
