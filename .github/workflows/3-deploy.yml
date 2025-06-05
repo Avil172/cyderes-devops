@@ -1,4 +1,4 @@
-name: Deploy with Local Image Build
+name: Deploy with Local Build
 
 on:
   workflow_dispatch:
@@ -18,36 +18,37 @@ jobs:
           chmod 600 ~/.ssh/ec2_key.pem
           ssh-keyscan -H "${{ secrets.EC2_PUBLIC_IP }}" >> ~/.ssh/known_hosts
 
-      - name: Transfer Source Files
+      - name: Transfer Files
         run: |
-          # Create directory structure
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            mkdir -p ~/app-src/Dockerfile
-            mkdir -p ~/app-src/charts
-          EOF
+          # Create exact directory structure
+          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "mkdir -p ~/app-src"
           
-          # Transfer Dockerfile and chart
+          # Transfer entire repository (or specific files)
           rsync -avz -e "ssh -i ~/.ssh/ec2_key.pem" \
-            ./Dockerfile ./charts/nginx/ \
+            ./ \
             ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/
 
       - name: Build and Deploy
         run: |
           ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Build local Docker image
-            docker build -t local-nginx:latest ~/app-src
+            # Fix Docker permissions
+            sudo usermod -aG docker ec2-user
+            sudo systemctl restart docker
             
-            # Load image into k3s
-            sudo k3s crictl pull local-nginx:latest >/dev/null || true
+            # Build using k3s's contained runtime (no Docker needed)
+            sudo k3s ctr images build \
+              --tag local-nginx:latest \
+              --no-progress \
+              ~/app-src
             
-            # Deploy with Helm
+            # Import into k3s directly
+            sudo k3s ctr images import --digests ~/app-src/local-nginx.tar
+            
+            # Deploy with explicit paths
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
             helm upgrade --install nginx ~/app-src/charts/nginx \
               --set image.repository=local-nginx \
               --set image.tag=latest \
-              --set imagePullPolicy=Never \
+              --set image.pullPolicy=IfNotPresent \
               --atomic
           EOF
-
-      - name: Cleanup
-        run: rm -f ~/.ssh/ec2_key.pem
