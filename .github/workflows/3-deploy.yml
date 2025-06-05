@@ -5,8 +5,8 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  CLUSTER_NAME: cyderes-challenge  # Updated cluster name
-  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
+  CLUSTER_NAME: cyderes-challenge
+  ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx
 
 jobs:
   deploy:
@@ -31,21 +31,31 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --name ${{ env.CLUSTER_NAME }}
 
+      - name: Prepare namespace
+        run: |
+          # Create namespace if not exists (idempotent)
+          kubectl create namespace cyderes --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Label namespace for istio/other tools if needed
+          kubectl label namespace cyderes --overwrite app=webserver
+
       - name: Deploy Helm chart
         run: |
           helm upgrade --install webserver ./charts/webserver \
             --namespace cyderes \
-            --create-namespace \
             --set service.type=LoadBalancer \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internet-facing \
             --set image.repository=${{ env.ECR_REPO }} \
             --set image.tag=latest \
             --atomic \
-            --timeout 5m
+            --timeout 5m \
+            --wait
 
       - name: Verify deployment
         run: |
           echo "LoadBalancer URL:"
-          kubectl get svc webserver -n cyderes -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-          echo -e "\nPods:"
+          kubectl get svc webserver-webserver -n cyderes -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+          echo -e "\nPod status:"
           kubectl get pods -n cyderes
+          echo -e "\nService details:"
+          kubectl describe svc webserver-webserver -n cyderes
