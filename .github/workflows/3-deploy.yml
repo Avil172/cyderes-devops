@@ -8,60 +8,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
+    - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-region: us-west-2
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
 
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
       with:
-        version: 'v1.25.0'  # Pinned to specific version for stability
+        version: 'v1.25.0'  # Matches your k3s version
 
     - name: Set up Helm
       uses: azure/setup-helm@v3
       with:
-        version: 'v3.10.0'  # Pinned to specific version for stability
+        version: 'v3.10.0'
 
     - name: Configure kubeconfig
       run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
-        chmod 600 $HOME/.kube/config
-        export KUBECONFIG=$HOME/.kube/config
-        kubectl config set-cluster default --insecure-skip-tls-verify=true
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+        chmod 600 ~/.kube/config
+        kubectl config set-cluster k3s --insecure-skip-tls-verify=true
+        kubectl get nodes  # Verify cluster access
 
-    - name: Create ECR secret in k3s
+    - name: Deploy with Helm
       run: |
-        kubectl delete secret ecr-secret --namespace=default --ignore-not-found=true
-        
-        ECR_PASSWORD=$(aws ecr get-login-password --region us-west-2)
-        
-        kubectl create secret docker-registry ecr-secret \
-          --docker-server=748852117020.dkr.ecr.us-west-2.amazonaws.com \
-          --docker-username=AWS \
-          --docker-password="$ECR_PASSWORD" \
-          --namespace=default
-
-    - name: Helm upgrade/install nginx
-      env:
-        IMAGE_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
-        IMAGE_TAG: latest
-      run: |
-        helm upgrade --install nginx charts/nginx \
-          --namespace default \
-          --create-namespace \
-          --set image.repository=${IMAGE_REPO} \
-          --set image.tag=${IMAGE_TAG} \
-          --set imagePullSecrets[0].name=ecr-secret \
+        helm upgrade --install nginx ./charts/nginx \
+          --set image.repository=748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2 \
+          --set image.tag=latest \
           --atomic \
           --timeout 5m0s
