@@ -1,73 +1,53 @@
-name: Deploy with Local Build
-
-on:
-  workflow_dispatch:
+name: Deploy
+on: workflow_dispatch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Configure SSH
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
           chmod 600 ~/.ssh/ec2_key.pem
-          ssh-keyscan -H "${{ secrets.EC2_PUBLIC_IP }}" >> ~/.ssh/known_hosts
-
-      - name: Prepare Remote Environment
-        run: |
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOSSH'
-            # Clean previous attempts
-            rm -rf ~/app-src
-            mkdir -p ~/app-src/{app/nginx,charts}
-            
-            # Ensure Docker is ready
-            sudo systemctl start docker
-            sudo usermod -aG docker ec2-user
-          EOSSH
+          ssh-keyscan ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
 
       - name: Transfer Files
         run: |
-          # Transfer all required files
-          scp -i ~/.ssh/ec2_key.pem ./Dockerfile ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/
-          scp -i ~/.ssh/ec2_key.pem -r ./app/nginx ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/app/
-          scp -i ~/.ssh/ec2_key.pem -r ./charts/nginx ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/charts/
+          scp -i ~/.ssh/ec2_key.pem -r \
+            ./Dockerfile \
+            ./app \
+            ./charts \
+            ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/
 
       - name: Build and Deploy
         run: |
-          ssh -i ~/.ssh/ec2_key.pem -T ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOSSH'
-            # Build Docker image
+          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Build with proper context
             cd ~/app-src
             sudo docker build -t local-nginx:latest .
             
-            # Restart k3s to ensure clean state
-            sudo systemctl restart k3s
+            # Save and import with explicit k3s containerd
+            sudo docker save local-nginx:latest > ~/nginx.tar
+            sudo k3s ctr images import ~/nginx.tar
+            sudo k3s ctr images tag docker.io/library/local-nginx:latest local-nginx:latest
             
-            # Wait for containerd socket
-            timeout 30 bash -c 'until sudo test -S /run/k3s/containerd/containerd.sock; do sleep 1; done'
-            
-            # Load image into k3s
-            sudo docker save local-nginx:latest | sudo k3s ctr images import -
-            
-            # Deploy with Helm
+            # Force new deployment
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-            helm upgrade --install nginx ~/app-src/charts/nginx \
+            helm upgrade --install nginx ./charts/nginx \
               --set image.repository="local-nginx" \
               --set image.tag="latest" \
               --set image.pullPolicy="Never" \
               --atomic \
-              --timeout 5m
-          EOSSH
+              --force
+          EOF
 
-      - name: Verify Deployment
+      - name: Verify Content
         run: |
-          ssh -i ~/.ssh/ec2_key.pem -T ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOSSH'
+          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=nginx --timeout=120s
-            kubectl get pods -o wide
-          EOSSH
+            kubectl exec -it $(kubectl get pods -l app=nginx -o name) -- \
+              cat /usr/share/nginx/html/index.html
+          EOF
