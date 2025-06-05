@@ -42,16 +42,21 @@ jobs:
 
     - name: Create ECR secret in k3s
       run: |
-        # Get ECR login token
-        ECR_TOKEN=$(aws ecr get-login-password --region us-west-2)
+        # Delete existing secret if it exists
+        kubectl delete secret ecr-secret --namespace=default --ignore-not-found=true
         
-        # Create or update the secret
+        # Get ECR login token
+        ECR_PASSWORD=$(aws ecr get-login-password --region us-west-2)
+        
+        # Create the secret
         kubectl create secret docker-registry ecr-secret \
           --docker-server=748852117020.dkr.ecr.us-west-2.amazonaws.com \
           --docker-username=AWS \
-          --docker-password=$ECR_TOKEN \
-          --namespace=default \
-          --dry-run=client -o yaml | kubectl apply -f -
+          --docker-password="$ECR_PASSWORD" \
+          --namespace=default
+        
+        # Verify the secret
+        kubectl get secret ecr-secret -o yaml
 
     - name: Helm upgrade/install nginx
       env:
@@ -62,4 +67,5 @@ jobs:
           --namespace default \
           --create-namespace \
           --set image.repository=${IMAGE_REPO} \
-          --set image.tag=${IMAGE_TAG}
+          --set image.tag=${IMAGE_TAG} \
+          --set imagePullSecrets[0].name=ecr-secret
