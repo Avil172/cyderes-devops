@@ -40,6 +40,19 @@ jobs:
         export KUBECONFIG=$HOME/.kube/config
         kubectl config set-cluster default --insecure-skip-tls-verify=true
 
+    - name: Create ECR secret in k3s
+      run: |
+        # Get ECR login token
+        ECR_TOKEN=$(aws ecr get-login-password --region us-west-2)
+        
+        # Create or update the secret
+        kubectl create secret docker-registry ecr-secret \
+          --docker-server=748852117020.dkr.ecr.us-west-2.amazonaws.com \
+          --docker-username=AWS \
+          --docker-password=$ECR_TOKEN \
+          --namespace=default \
+          --dry-run=client -o yaml | kubectl apply -f -
+
     - name: Helm upgrade/install nginx
       env:
         IMAGE_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
