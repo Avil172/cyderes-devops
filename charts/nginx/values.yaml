@@ -1,21 +1,52 @@
+# charts/nginx/values.yaml
 replicaCount: 1
 
 image:
-  repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
-  pullPolicy: Always
-  tag: "latest"
-
-imagePullSecrets:
-  - name: ecr-secret
+  repository: local-nginx
+  tag: latest
+  pullPolicy: Never  # Since we're using local images
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 80
+  targetPort: 80
+  nodePort: 30080  # Fixed port (30000-32767 range)
+  # Optional annotations for AWS Load Balancer:
+  # annotations:
+  #   service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+ingress:
+  enabled: false
+  # className: "nginx"
+  # hosts:
+  #   - host: nginx.yourdomain.com
+  #     paths:
+  #       - path: /
+  #         pathType: Prefix
+  # tls: []
 
 resources:
   limits:
     cpu: 500m
     memory: 512Mi
   requests:
-    cpu: 250m
-    memory: 256Mi
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Extra environment variables
+env: []
+  # - name: ENV_VAR
+  #   value: "value"
