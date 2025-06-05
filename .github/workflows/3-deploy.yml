@@ -25,12 +25,12 @@ jobs:
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
       with:
-        version: 'latest'
+        version: 'v1.25.0'  # Pinned to specific version for stability
 
     - name: Set up Helm
       uses: azure/setup-helm@v3
       with:
-        version: 'latest'
+        version: 'v3.10.0'  # Pinned to specific version for stability
 
     - name: Configure kubeconfig
       run: |
@@ -42,21 +42,15 @@ jobs:
 
     - name: Create ECR secret in k3s
       run: |
-        # Delete existing secret if it exists
         kubectl delete secret ecr-secret --namespace=default --ignore-not-found=true
         
-        # Get ECR login token
         ECR_PASSWORD=$(aws ecr get-login-password --region us-west-2)
         
-        # Create the secret
         kubectl create secret docker-registry ecr-secret \
           --docker-server=748852117020.dkr.ecr.us-west-2.amazonaws.com \
           --docker-username=AWS \
           --docker-password="$ECR_PASSWORD" \
           --namespace=default
-        
-        # Verify the secret
-        kubectl get secret ecr-secret -o yaml
 
     - name: Helm upgrade/install nginx
       env:
@@ -68,4 +62,6 @@ jobs:
           --create-namespace \
           --set image.repository=${IMAGE_REPO} \
           --set image.tag=${IMAGE_TAG} \
-          --set imagePullSecrets[0].name=ecr-secret
+          --set imagePullSecrets[0].name=ecr-secret \
+          --atomic \  # Automatically rollback on failure
+          --timeout 5m0s

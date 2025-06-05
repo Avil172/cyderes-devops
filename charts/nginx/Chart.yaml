@@ -1,5 +1,6 @@
 apiVersion: v2
 name: nginx
-description: A basic Helm chart for nginx
+description: A Helm chart for deploying nginx on k3s
+type: application
 version: 0.1.0
-appVersion: "1.0"
+appVersion: "1.0.0"

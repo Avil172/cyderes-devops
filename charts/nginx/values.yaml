@@ -3,10 +3,19 @@ replicaCount: 1
 image:
   repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
   pullPolicy: Always
-  tag: latest
+  tag: "latest"
+
+imagePullSecrets:
+  - name: ecr-secret
 
 service:
-  type: NodePort
+  type: ClusterIP
   port: 80
 
-resources: {}
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
