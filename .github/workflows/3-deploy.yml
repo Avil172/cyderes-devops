@@ -11,19 +11,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Setup kubectl
+    - name: Set up kubectl
       uses: azure/setup-kubectl@v3
       with:
-        version: 'v1.25.0'
+        version: 'v1.25.0'  # Matches k3s version
 
     - name: Configure kubeconfig
       run: |
         mkdir -p ~/.kube
-        echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+        cat <<EOF > ~/.kube/config
+        ${{ secrets.KUBECONFIG }}
+        EOF
         chmod 600 ~/.kube/config
-        kubectl config set-cluster default --server=https://$(echo "${{ secrets.KUBECONFIG }}" | base64 -d | yq e '.clusters[0].cluster.server' -)
-        kubectl config set-cluster default --insecure-skip-tls-verify=true
-        kubectl get nodes
+        kubectl config set-cluster k3s --insecure-skip-tls-verify=true  # Force-disable TLS
+        kubectl get nodes  # Verify cluster access
 
     - name: Deploy with Helm
       run: |
