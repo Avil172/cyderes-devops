@@ -1,8 +1,11 @@
-# Use official nginx base image
-FROM nginx:alpine
-
-# Copy index.html into nginx html folder
-COPY app/nginx/index.html /usr/share/nginx/html/index.html
-
-# Expose port 80 (optional, since it's default)
-EXPOSE 80
+<!-- ./app/nginx/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My NGINX</title>
+</head>
+<body>
+    <h1>Successfully Deployed!</h1>
+    <p>Custom content served from Helm chart</p>
+</body>
+</html>
