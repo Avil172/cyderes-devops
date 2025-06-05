@@ -1,19 +1,9 @@
-replicaCount: 1
-
 image:
-  repository: avil172/my-nginx  # Your Docker Hub repo
+  repository: avil172/my-nginx
   tag: latest
-  pullPolicy: Always  # Changed to Always for Docker Hub pulls
+  pullPolicy: Always
 
 service:
   type: NodePort
   port: 80
   nodePort: 30080
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi

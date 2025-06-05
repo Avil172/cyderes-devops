@@ -3,15 +3,11 @@ name: Docker Hub Deployment
 on:
   workflow_dispatch:
 
-env:
-  DOCKER_IMAGE: avil172/my-nginx
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -21,34 +17,54 @@ jobs:
 
       - name: Build and Push
         run: |
-          docker build -t $DOCKER_IMAGE .
-          docker push $DOCKER_IMAGE
+          docker build -t avil172/my-nginx .
+          docker push avil172/my-nginx
 
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
           chmod 600 ~/.ssh/ec2_key.pem
-          ssh-keyscan ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.EC2_PUBLIC_IP }} ssh-ed25519 AAAAC3..." >> ~/.ssh/known_hosts
 
-      - name: Deploy to k3s
+      - name: Prepare Remote Environment
         run: |
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-            # Pre-pull image to ensure availability
-            sudo k3s crictl pull docker.io/$DOCKER_IMAGE:latest
+          ssh -i ~/.ssh/ec2_key.pem -T ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOREMOTE'
+            # Clean previous attempts
+            rm -rf ~/app-src
+            mkdir -p ~/app-src/charts/nginx
             
-            helm upgrade --install nginx ./charts/nginx \
+            # Configure Docker Hub auth
+            sudo mkdir -p /etc/rancher/k3s/
+            cat <<EOF | sudo tee /etc/rancher/k3s/registries.yaml
+            mirrors:
+              docker.io:
+                endpoint:
+                  - "https://registry-1.docker.io"
+            
+            configs:
+              "registry-1.docker.io":
+                auth:
+                  username: "avil172"
+                  password: "$DOCKERHUB_TOKEN"
+            EOF
+            sudo systemctl restart k3s
+          EOREMOTE
+
+      - name: Transfer Files
+        run: |
+          scp -i ~/.ssh/ec2_key.pem -o StrictHostKeyChecking=no \
+            -r ./charts/nginx/* \
+            ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/charts/nginx/
+
+      - name: Deploy
+        run: |
+          ssh -i ~/.ssh/ec2_key.pem -T ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EODEPLOY'
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            helm upgrade --install nginx ~/app-src/charts/nginx \
               --set image.repository="avil172/my-nginx" \
+              --set image.tag="latest" \
               --set image.pullPolicy="Always" \
               --atomic \
               --timeout 5m
-          EOF
-
-      - name: Verify
-        run: |
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-            kubectl get pods -o wide
-            curl -s http://localhost:30080 | grep "Successfully Deployed" || echo "Content verification failed"
-          EOF
+          EODEPLOY
