@@ -2,12 +2,11 @@ replicaCount: 1
 
 image:
   repository: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
+  pullPolicy: Always
   tag: latest
-  pullPolicy: IfNotPresent
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 80
 
-ingress:
-  enabled: false
+resources: {}

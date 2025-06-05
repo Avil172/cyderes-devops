@@ -37,9 +37,16 @@ jobs:
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
+        export KUBECONFIG=$HOME/.kube/config
+        kubectl config set-cluster default --insecure-skip-tls-verify=true
 
     - name: Helm upgrade/install nginx
+      env:
+        IMAGE_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
+        IMAGE_TAG: latest
       run: |
         helm upgrade --install nginx charts/nginx \
           --namespace default \
-          --create-namespace
+          --create-namespace \
+          --set image.repository=${IMAGE_REPO} \
+          --set image.tag=${IMAGE_TAG}
