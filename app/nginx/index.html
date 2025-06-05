@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Cyderes DevOps Challenge</title>
-</head>
-<body>
-    <h1>Welcome to Cyderes DevOps Challenge</h1>
-    <p>Successfully deployed NGINX on EKS!</p>
-</body>
-</html>
+# Use official nginx base image
+FROM nginx:alpine
+
+# Copy index.html into nginx html folder
+COPY app/nginx/index.html /usr/share/nginx/html/index.html
+
+# Expose port 80 (optional, since it's default)
+EXPOSE 80
