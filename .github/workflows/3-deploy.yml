@@ -25,23 +25,24 @@ jobs:
       - name: Build and Deploy
         run: |
           ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Build with proper context
+            # Build image
             cd ~/app-src
             sudo docker build -t local-nginx:latest .
             
-            # Save and import with explicit k3s containerd
-            sudo docker save local-nginx:latest > ~/nginx.tar
-            sudo k3s ctr images import ~/nginx.tar
-            sudo k3s ctr images tag docker.io/library/local-nginx:latest local-nginx:latest
+            # Restart k3s to ensure clean state
+            sudo systemctl restart k3s
+            sleep 10
             
-            # Force new deployment
+            # Load image using docker-shim
+            sudo docker save local-nginx:latest | sudo k3s docker load
+            
+            # Deploy
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
             helm upgrade --install nginx ./charts/nginx \
               --set image.repository="local-nginx" \
               --set image.tag="latest" \
               --set image.pullPolicy="Never" \
-              --atomic \
-              --force
+              --atomic
           EOF
 
       - name: Verify Content
