@@ -1,4 +1,4 @@
-name: Deploy to k3s
+name: Deploy with Local Image Build
 
 on:
   workflow_dispatch:
@@ -16,30 +16,38 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
           chmod 600 ~/.ssh/ec2_key.pem
-          # Pre-verify host key
           ssh-keyscan -H "${{ secrets.EC2_PUBLIC_IP }}" >> ~/.ssh/known_hosts
 
-      - name: Transfer Helm charts
+      - name: Transfer Source Files
         run: |
-          # Create destination directory first
-          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "mkdir -p ~/nginx-chart"
-          # Use rsync for more reliable transfers
-          rsync -avz -e "ssh -i ~/.ssh/ec2_key.pem -o StrictHostKeyChecking=yes" \
-            ./charts/nginx/ \
-            ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/nginx-chart/
+          # Create directory structure
+          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            mkdir -p ~/app-src/Dockerfile
+            mkdir -p ~/app-src/charts
+          EOF
+          
+          # Transfer Dockerfile and chart
+          rsync -avz -e "ssh -i ~/.ssh/ec2_key.pem" \
+            ./Dockerfile ./charts/nginx/ \
+            ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/app-src/
 
-      - name: Remote Helm deployment
+      - name: Build and Deploy
         run: |
           ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Build local Docker image
+            docker build -t local-nginx:latest ~/app-src
+            
+            # Load image into k3s
+            sudo k3s crictl pull local-nginx:latest >/dev/null || true
+            
+            # Deploy with Helm
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-            helm upgrade --install nginx ~/nginx-chart \
-              --set image.repository=748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2 \
+            helm upgrade --install nginx ~/app-src/charts/nginx \
+              --set image.repository=local-nginx \
               --set image.tag=latest \
-              --atomic \
-              --timeout 5m0s
-            kubectl get pods
+              --set imagePullPolicy=Never \
+              --atomic
           EOF
 
       - name: Cleanup
-        if: always()
         run: rm -f ~/.ssh/ec2_key.pem
