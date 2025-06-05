@@ -1,35 +1,33 @@
-name: Deploy to k3s
-
-on:
-  workflow_dispatch:
+name: Remote Deployment
+on: workflow_dispatch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3  # Your charts are now in ./charts/nginx
 
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.25.0'  # Matches k3s version
+      - name: Configure SSH access
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
+          chmod 600 ~/.ssh/ec2_key.pem
+          echo "${{ secrets.EC2_PUBLIC_IP }} ssh-ed25519 AAAAC3..." >> ~/.ssh/known_hosts
 
-    - name: Configure kubeconfig
-      run: |
-        mkdir -p ~/.kube
-        cat <<EOF > ~/.kube/config
-        ${{ secrets.KUBECONFIG }}
-        EOF
-        chmod 600 ~/.kube/config
-        kubectl config set-cluster k3s --insecure-skip-tls-verify=true  # Force-disable TLS
-        kubectl get nodes  # Verify cluster access
+      - name: Remote Helm deployment
+        run: |
+          # Copy ONLY the chart directory to EC2
+          scp -i ~/.ssh/ec2_key.pem -r ./charts/nginx ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/nginx-chart
 
-    - name: Deploy with Helm
-      run: |
-        helm upgrade --install nginx ./charts/nginx \
-          --set image.repository=748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2 \
-          --set image.tag=latest \
-          --atomic \
-          --timeout 5m0s
+          # Execute remotely using the server's native kubeconfig
+          ssh -i ~/.ssh/ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Use the server's built-in kubeconfig
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            
+            # Helm install from copied chart
+            helm upgrade --install nginx ~/nginx-chart \
+              --set image.repository=748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2 \
+              --set image.tag=latest \
+              --atomic
+          EOF
