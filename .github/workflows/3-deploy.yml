@@ -5,7 +5,7 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  CLUSTER_NAME: funny-synth-duck
+  CLUSTER_NAME: cyderes-challenge  # Updated cluster name
   ECR_REPO: 748852117020.dkr.ecr.us-west-2.amazonaws.com/devops/cyderes-nginx-2
 
 jobs:
@@ -31,25 +31,13 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --name ${{ env.CLUSTER_NAME }}
 
-      - name: Tag subnets (required for LoadBalancer)
-        run: |
-          SUBNETS=$(aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --query "cluster.resourcesVpcConfig.subnetIds" --output text)
-          aws ec2 create-tags --resources $SUBNETS \
-            --tags Key=kubernetes.io/role/elb,Value=1 Key=kubernetes.io/role/internal-elb,Value=1
-
       - name: Deploy Helm chart
         run: |
-          # Get subnets as JSON array
-          SUBNETS_JSON=$(aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} \
-            --query "cluster.resourcesVpcConfig.subnetIds" \
-            --output json)
-          
           helm upgrade --install webserver ./charts/webserver \
             --namespace cyderes \
             --create-namespace \
             --set service.type=LoadBalancer \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"=internet-facing \
-            --set-json service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-subnets"="$SUBNETS_JSON" \
             --set image.repository=${{ env.ECR_REPO }} \
             --set image.tag=latest \
             --atomic \
