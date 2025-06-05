@@ -24,10 +24,11 @@ jobs:
     - name: Configure kubeconfig
       run: |
         mkdir -p ~/.kube
-        echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+        cat <<EOF > ~/.kube/config
+        ${{ secrets.KUBECONFIG }}
+        EOF
         chmod 600 ~/.kube/config
-        kubectl config set-cluster k3s --insecure-skip-tls-verify=true
-        kubectl get nodes  # Verify cluster access
+        kubectl get nodes
 
     - name: Deploy with Helm
       run: |
