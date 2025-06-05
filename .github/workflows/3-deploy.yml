@@ -63,5 +63,5 @@ jobs:
           --set image.repository=${IMAGE_REPO} \
           --set image.tag=${IMAGE_TAG} \
           --set imagePullSecrets[0].name=ecr-secret \
-          --atomic \  # Automatically rollback on failure
+          --atomic \
           --timeout 5m0s
